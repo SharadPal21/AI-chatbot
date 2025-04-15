@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saving Goal Chatbot</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', sans-serif;
+            background: #eef2f7;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            animation: fadeInBody 1s ease-in;
+        }
+
+        @keyframes fadeInBody {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .chat-container {
+            background: #ffffff;
+            width: 400px;
+            max-width: 95%;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            animation: popIn 0.5s ease;
+        }
+
+        @keyframes popIn {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .chat-header {
+            background: #3f51b5;
+            padding: 16px;
+            color: white;
+            text-align: center;
+            font-size: 20px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        #chatbox {
+            padding: 16px;
+            height: 400px;
+            overflow-y: auto;
+            background: #f9f9f9;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .message {
+            padding: 10px 14px;
+            border-radius: 16px;
+            max-width: 80%;
+            clear: both;
+            opacity: 0;
+            transform: translateY(10px);
+            animation: slideFadeIn 0.4s forwards;
+        }
+
+        .user-message {
+            background: #cce5ff;
+            color: #004085;
+            align-self: flex-end;
+        }
+
+        .bot-message {
+            background: #e0f7fa;
+            color: #006064;
+            align-self: flex-start;
+        }
+
+        @keyframes slideFadeIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .input-area {
+            display: flex;
+            padding: 10px;
+            border-top: 1px solid #ddd;
+            background: #fff;
+        }
+
+        #input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 16px;
+            margin-right: 8px;
+        }
+
+        #sendBtn {
+            padding: 12px 20px;
+            background-color: #3f51b5;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        #sendBtn:hover {
+            background-color: #303f9f;
+        }
+
+        .progress-bar-container {
+            background-color: #e9ecef;
+            border-radius: 6px;
+            height: 10px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+
+        .progress-bar {
+            background-color: #28a745;
+            height: 100%;
+            width: 0%;
+            border-radius: 6px;
+            transition: width 0.3s ease-in-out;
+        }
+
+        .progress-text {
+            font-size: 14px;
+            color: #555;
+            margin-top: 5px;
+        }
+
+        .history-list {
+            margin-top: 10px;
+            padding-left: 15px;
+            font-size: 14px;
+            color: #777;
+        }
+
+        .history-list li {
+            margin-bottom: 5px;
+            list-style-type: disc;
+        }
+        .progress-visualization {
+            font-size: 1.5em;
+            margin-top: 5px;
+            color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">💰 Saving Goal Bot</div>
+        <div id="chatbox">
+            <div class="message bot-message">👋 Hello! I'm your Saving Goal Bot. Let's set your financial goal. What is your target saving amount and optionally a target date (e.g., '$1000 by Dec 31')?</div>
+        </div>
+        <div class="input-area">
+            <input type="text" id="input" placeholder="Type your message..." autocomplete="off">
+            <button id="sendBtn">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const chatbox = document.getElementById('chatbox');
+        const input = document.getElementById('input');
+        const sendBtn = document.getElementById('sendBtn');
+
+        let goalAmount = localStorage.getItem('savingGoal') ? parseFloat(localStorage.getItem('savingGoal')) : null;
+        let savedAmount = localStorage.getItem('savedAmount') ? parseFloat(localStorage.getItem('savedAmount')) : 0;
+        let savingsHistory = localStorage.getItem('savingsHistory') ? JSON.parse(localStorage.getItem('savingsHistory')) : [];
+        let goalDeadline = localStorage.getItem('goalDeadline') ? localStorage.getItem('goalDeadline') : null;
+        let expectingGoal = goalAmount === null;
+
+        function addMessage(message, sender) {
+            const div = document.createElement('div');
+            div.className = `message ${sender}-message`;
+            div.textContent = message;
+            chatbox.appendChild(div);
+            chatbox.scrollTop = chatbox.scrollHeight;
+        }
+
+        function displayProgress() {
+            if (goalAmount !== null) {
+                const progressPercentage = goalAmount > 0 ? Math.min(100, (savedAmount / goalAmount) * 100).toFixed(2) : 0;
+                const progressBarContainer = document.createElement('div');
+                progressBarContainer.className = 'progress-bar-container';
+                const progressBar = document.createElement('div');
+                progressBar.className = 'progress-bar';
+                progressBar.style.width = `${progressPercentage}%`;
+                progressBarContainer.appendChild(progressBar);
+                chatbox.appendChild(progressBarContainer);
+
+                const progressText = document.createElement('div');
+                progressText.className = 'progress-text';
+                progressText.textContent = `Progress: $${savedAmount.toLocaleString()} / $${goalAmount.toLocaleString()} (${progressPercentage}%)`;
+                chatbox.appendChild(progressText);
+
+                // Basic Text-Based Visualization
+                const filledChars = Math.round(progressPercentage / 10);
+                const emptyChars = 10 - filledChars;
+                const visualization = '🟢'.repeat(filledChars) + '⚪'.repeat(emptyChars);
+                const visualizationDiv = document.createElement('div');
+                visualizationDiv.className = 'progress-visualization';
+                visualizationDiv.textContent = visualization;
+                chatbox.appendChild(visualizationDiv);
+
+                if (goalDeadline) {
+                    const deadlineText = document.createElement('div');
+                    deadlineText.className = 'message bot-message';
+                    deadlineText.textContent = `Target Deadline: ${goalDeadline}`;
+                    chatbox.appendChild(deadlineText);
+                }
+            }
+        }
+
+        function displayHistory() {
+            if (savingsHistory.length > 0) {
+                const historyTitle = document.createElement('div');
+                historyTitle.className = 'message bot-message';
+                historyTitle.textContent = 'Your Saving History:';
+                chatbox.appendChild(historyTitle);
+
+                const historyList = document.createElement('ul');
+                historyList.className = 'history-list';
+                savingsHistory.forEach(item => {
+                    const listItem = document.createElement('li');
+                    const noteText = item.note ? ` (${item.note})` : '';
+                    listItem.textContent = `+$${item.amount.toLocaleString()} - ${new Date(item.date).toLocaleDateString()}${noteText}`;
+                    historyList.appendChild(listItem);
+                });
+                chatbox.appendChild(historyList);
+            }
+        }
+
+        function sendMessage() {
+            const msg = input.value.trim();
+            if (msg === "") return;
+            addMessage(msg, 'user');
+            processMessage(msg);
+            input.value = '';
+        }
+
+        function processMessage(msg) {
+            if (expectingGoal) {
+                const goalMatch = msg.match(/^\$?(\d+(\.\d{1,2})?)\s*(?:by\s*(.+))?$/i);
+                if (goalMatch) {
+                    const parsedGoal = parseFloat(goalMatch[1]);
+                    const deadlinePart = goalMatch[3];
+
+                    if (!isNaN(parsedGoal) && parsedGoal > 0) {
+                        goalAmount = parsedGoal;
+                        localStorage.setItem('savingGoal', goalAmount);
+                        expectingGoal = false;
+
+                        if (deadlinePart) {
+                            goalDeadline = deadlinePart.trim();
+                            localStorage.setItem('goalDeadline', goalDeadline);
+                            addMessage(`Great! Your savings goal is $${goalAmount.toLocaleString()} with a target deadline of ${goalDeadline}. How much would you like to add to your savings? (e.g., 'add 50')`, 'bot');
+                        } else {
+                            addMessage(`Great! Your savings goal is $${goalAmount.toLocaleString()}. How much would you like to add to your savings? (e.g., 'add 50')`, 'bot');
+                        }
+                        displayProgress();
+                        displayHistory();
+                    } else {
+                        addMessage("Hmm, that doesn't look like a valid goal amount. Please enter a number (e.g., 1000), optionally followed by a deadline.", 'bot');
+                    }
+                } else {
+                    addMessage("Please tell me your savings goal (e.g., '$1000' or '$1000 by Dec 31').", 'bot');
+                }
+                return;
+            }
+
+            const addMatch = msg.match(/(add|save)\s+\$?(\d+(\.\d{1,2})?)\s*(note:\s*(.+))?/i);
+            if (addMatch) {
+                const amount = parseFloat(addMatch[2]);
+                if (!isNaN(amount) && amount > 0) {
+                    savedAmount += amount;
+                    localStorage.setItem('savedAmount', savedAmount);
+                    const note = addMatch[5] ? addMatch[5].trim() : '';
+                    savingsHistory.push({ amount: amount, date: new Date().toISOString(), note: note });
+                    localStorage.setItem('savingsHistory', JSON.stringify(savingsHistory));
+                    addMessage(`Successfully added $${amount.toLocaleString()} to your savings.`, 'bot');
+                    displayProgress();
+                    displayHistory();
+                    if (savedAmount >= goalAmount) {
+                        addMessage("🎉 Congratulations! You've reached your savings goal!", 'bot');
+                    } else {
+                        addMessage("What else would you like to do? You can say 'progress', 'history', 'reset', or 'update deadline'.", 'bot');
+                    }
+                } else {
+                    addMessage("Please enter a valid amount to add (e.g., 'add 50').", 'bot');
+                }
+                return;
+            }
+
+            if (msg.toLowerCase().includes("progress")) {
+                displayProgress();
+                return;
+            }
+
+            if (msg.toLowerCase().includes("history")) {
+                displayHistory();
+                return;
+            }
+
+            if (msg.toLowerCase().includes("reset")) {
+                if (confirm("Are you sure you want to reset your goal and progress?")) {
+                    goalAmount = null;
+                    savedAmount = 0;
+                    savingsHistory = [];
+                    goalDeadline = null;
+                    localStorage.removeItem('savingGoal');
+                    localStorage.removeItem('savedAmount');
+                    localStorage.removeItem('savingsHistory');
+                    localStorage.removeItem('goalDeadline');
+                    expectingGoal = true;
+                    chatbox.innerHTML = '<div class="message bot-message">👋 Okay, let\'s start over. What is your target saving amount and optionally a target date (e.g., \'$1000 by Dec 31\')?</div>';
+                }
+                return;
+            }
+
+            if (msg.toLowerCase().includes("update deadline")) {
+                addMessage("What is the new target deadline you'd like to set (e.g., 'End of January', '01/31/2024')?", 'bot');
+                // We'll need a new state to handle the next input as the new deadline
+                let waitingForNewDeadline = true;
+                const deadlineInputHandler = (e) => {
+                    if (e.key === 'Enter' && waitingForNewDeadline) {
+                        const newDeadline = input.value.trim();
+                        if (newDeadline) {
+                            goalDeadline = newDeadline;
+                            localStorage.setItem('goalDeadline', goalDeadline);
+                            addMessage(`Your target deadline has been updated to ${goalDeadline}.`, 'bot');
+                            displayProgress();
+                            waitingForNewDeadline = false;
+                            input.removeEventListener('keydown', deadlineInputHandler);
+                            input.value = '';
+                        } else {
+                            addMessage("Please enter a valid deadline.", 'bot');
+                        }
+                    }
+                };
+                input.addEventListener('keydown', deadlineInputHandler);
+                return;
+            }
+
+            addMessage("I didn't quite understand that. You can tell me your goal amount (optionally with a deadline), say 'add [amount]' to save, ask for 'progress', 'history', 'reset', or 'update deadline'.", 'bot');
+        }
+
+        sendBtn.addEventListener('click', sendMessage);
+        input.addEventListener('keydown', e => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        // Initial setup if goal exists
+        if (goalAmount !== null) {
+            addMessage(`Welcome back! Your current goal is $${goalAmount.toLocaleString()}${goalDeadline ? ` with a deadline of ${goalDeadline}` : ''}. How can I help you today?`, 'bot');
+            displayProgress();
+            displayHistory();
+        }
+    </script>
+</body>
+</html>
