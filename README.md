@@ -20,6 +20,6 @@ A simple animated chatbot that helps users set and track their savings goals dir
 4. Type `progress` or `history` to check status
 
 ## 🌐 Demo
-[GitHub Pages Link](https://SharadPal21.github.io/AI-chatbot)
+[GitHub Pages Link](https://github.com/SharadPal21/AI-chatbot)
 
 
